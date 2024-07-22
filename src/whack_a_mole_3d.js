@@ -1,23 +1,20 @@
 window.initGame = (React, assetsUrl) => {
-  const { useState, useEffect, useRef, Suspense } = React;
+  const { useState, useEffect, useRef, Suspense, useMemo } = React;
   const { useFrame, useLoader, useThree } = window.ReactThreeFiber;
   const THREE = window.THREE;
   const { GLTFLoader } = window.THREE;
 
-  function Model({ url, scale = [1, 1, 1], position = [0, 0, 0] }) {
+  const MoleModel = React.memo(function MoleModel({ url, scale = [1, 1, 1], position = [0, 0, 0] }) {
     const gltf = useLoader(GLTFLoader, url);
+    const copiedScene = useMemo(() => gltf.scene.clone(), [gltf]);
     
     useEffect(() => {
-      if (gltf.scene) {
-        gltf.scene.scale.set(...scale);
-        gltf.scene.position.set(...position);
-      }
-    }, [gltf, scale, position]);
+      copiedScene.scale.set(...scale);
+      copiedScene.position.set(...position);
+    }, [copiedScene, scale, position]);
 
-    return React.createElement(Suspense, { fallback: null },
-      React.createElement('primitive', { object: gltf.scene })
-    );
-  }
+    return React.createElement('primitive', { object: copiedScene });
+  });
 
   function Mole({ position, isActive, onWhack }) {
     const moleRef = useRef();
@@ -35,13 +32,25 @@ window.initGame = (React, assetsUrl) => {
         position: position,
         onClick: onWhack
       },
-      React.createElement(Model, { 
+      React.createElement(MoleModel, { 
         url: `${assetsUrl}/mole.glb`,
         scale: [0.5, 0.5, 0.5],
         position: [0, -0.5, 0]
       })
     );
   }
+
+  const HammerModel = React.memo(function HammerModel({ url, scale = [1, 1, 1], position = [0, 0, 0] }) {
+    const gltf = useLoader(GLTFLoader, url);
+    const copiedScene = useMemo(() => gltf.scene.clone(), [gltf]);
+    
+    useEffect(() => {
+      copiedScene.scale.set(...scale);
+      copiedScene.position.set(...position);
+    }, [copiedScene, scale, position]);
+
+    return React.createElement('primitive', { object: copiedScene });
+  });
 
   function Hammer() {
     const hammerRef = useRef();
@@ -61,10 +70,10 @@ window.initGame = (React, assetsUrl) => {
     return React.createElement(
       'group',
       { ref: hammerRef },
-      React.createElement(Model, { 
+      React.createElement(HammerModel, { 
         url: `${assetsUrl}/hammer.glb`,
-        scale: [2, 2, 2],  // Increased hammer size
-        position: [0, 0, -2]  // Moved hammer in front of the camera
+        scale: [2, 2, 2],
+        position: [0, 0, -2]
       })
     );
   }
@@ -73,7 +82,7 @@ window.initGame = (React, assetsUrl) => {
     const { camera } = useThree();
     
     useEffect(() => {
-      camera.position.set(0, 5, 10);
+      camera.position.set(0, 10, 15);
       camera.lookAt(0, 0, 0);
     }, [camera]);
 
@@ -121,9 +130,9 @@ window.initGame = (React, assetsUrl) => {
         React.createElement(Mole, {
           key: index,
           position: [
-            (index % 3 - 1) * 2,
+            (index % 3 - 1) * 4,  // Increased spacing
             0,
-            (Math.floor(index / 3) - 1) * 2
+            (Math.floor(index / 3) - 1) * 4  // Increased spacing
           ],
           isActive: isActive,
           onWhack: () => whackMole(index)
