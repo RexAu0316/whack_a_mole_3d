@@ -18,12 +18,15 @@ window.initGame = (React, assetsUrl) => {
 
   function Mole({ position, isActive, onWhack }) {
     const moleRef = useRef();
+    const [moleY, setMoleY] = useState(-1);
 
-    useEffect(() => {
+    useFrame((state, delta) => {
       if (moleRef.current) {
-        moleRef.current.position.y = isActive ? 0 : -1;
+        const targetY = isActive ? 0 : -1;
+        setMoleY(current => THREE.MathUtils.lerp(current, targetY, delta * 5));
+        moleRef.current.position.y = moleY;
       }
-    }, [isActive]);
+    });
 
     return React.createElement(
       'group',
@@ -72,7 +75,7 @@ window.initGame = (React, assetsUrl) => {
         if (isHitting) {
           const elapsedTime = state.clock.getElapsedTime() - hitStartTime.current;
           if (elapsedTime < 0.2) {
-            hammerRef.current.rotation.x = Math.PI / 2 * (elapsedTime / 0.2);
+            hammerRef.current.rotation.x = Math.PI / 2 * Math.sin(elapsedTime * Math.PI / 0.2);
           } else {
             setIsHitting(false);
             hammerRef.current.rotation.x = 0;
@@ -91,9 +94,9 @@ window.initGame = (React, assetsUrl) => {
       { ref: hammerRef, onClick: handleClick },
       React.createElement(HammerModel, { 
         url: `${assetsUrl}/hammer.glb`,
-        scale: [50, 50, 50],
+        scale: [20, 20, 20],
         position: [0, 0, -2],
-        rotation: [-Math.PI / 2, 0, 0]  // Rotate hammer to be vertical
+        rotation: [-Math.PI / 2, 0, 0]
       })
     );
   }
@@ -114,19 +117,37 @@ window.initGame = (React, assetsUrl) => {
     const [score, setScore] = useState(0);
 
     useEffect(() => {
-      const interval = setInterval(() => {
+      const popUpMole = () => {
         setMoles(prevMoles => {
           const newMoles = [...prevMoles];
-          const inactiveIndices = newMoles.reduce((acc, mole, index) => mole ? acc : [...acc, index], []);
+          const inactiveIndices = newMoles.reduce((acc, mole, index) => !mole ? [...acc, index] : acc, []);
           if (inactiveIndices.length > 0) {
             const randomIndex = inactiveIndices[Math.floor(Math.random() * inactiveIndices.length)];
             newMoles[randomIndex] = true;
           }
           return newMoles;
         });
-      }, 1000);
+      };
 
-      return () => clearInterval(interval);
+      const popDownMole = () => {
+        setMoles(prevMoles => {
+          const newMoles = [...prevMoles];
+          const activeIndices = newMoles.reduce((acc, mole, index) => mole ? [...acc, index] : acc, []);
+          if (activeIndices.length > 0) {
+            const randomIndex = activeIndices[Math.floor(Math.random() * activeIndices.length)];
+            newMoles[randomIndex] = false;
+          }
+          return newMoles;
+        });
+      };
+
+      const popUpInterval = setInterval(popUpMole, 1000);
+      const popDownInterval = setInterval(popDownMole, 2000);
+
+      return () => {
+        clearInterval(popUpInterval);
+        clearInterval(popDownInterval);
+      };
     }, []);
 
     const whackMole = (index) => {
@@ -166,4 +187,3 @@ window.initGame = (React, assetsUrl) => {
 };
 
 console.log('3D Whack-a-Mole game script loaded');
-
