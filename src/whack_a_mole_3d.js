@@ -4,9 +4,16 @@ window.initGame = (React, assetsUrl) => {
   const THREE = window.THREE;
   const { GLTFLoader } = window.THREE;
 
-  function Model({ url }) {
+  function Model({ url, scale = [1, 1, 1], position = [0, 0, 0] }) {
     const gltf = useLoader(GLTFLoader, url);
-    console.log('Model loaded:', url, gltf);
+    
+    useEffect(() => {
+      if (gltf.scene) {
+        gltf.scene.scale.set(...scale);
+        gltf.scene.position.set(...position);
+      }
+    }, [gltf, scale, position]);
+
     return React.createElement(Suspense, { fallback: null },
       React.createElement('primitive', { object: gltf.scene })
     );
@@ -17,7 +24,7 @@ window.initGame = (React, assetsUrl) => {
 
     useEffect(() => {
       if (moleRef.current) {
-        moleRef.current.position.y = isActive ? 0.5 : -0.5;
+        moleRef.current.position.y = isActive ? 0 : -1;
       }
     }, [isActive]);
 
@@ -28,7 +35,11 @@ window.initGame = (React, assetsUrl) => {
         position: position,
         onClick: onWhack
       },
-      React.createElement(Model, { url: `${assetsUrl}/mole.glb` })
+      React.createElement(Model, { 
+        url: `${assetsUrl}/mole.glb`,
+        scale: [0.5, 0.5, 0.5],
+        position: [0, -0.5, 0]
+      })
     );
   }
 
@@ -50,8 +61,23 @@ window.initGame = (React, assetsUrl) => {
     return React.createElement(
       'group',
       { ref: hammerRef },
-      React.createElement(Model, { url: `${assetsUrl}/hammer.glb` })
+      React.createElement(Model, { 
+        url: `${assetsUrl}/hammer.glb`,
+        scale: [2, 2, 2],  // Increased hammer size
+        position: [0, 0, -2]  // Moved hammer in front of the camera
+      })
     );
+  }
+
+  function Camera() {
+    const { camera } = useThree();
+    
+    useEffect(() => {
+      camera.position.set(0, 5, 10);
+      camera.lookAt(0, 0, 0);
+    }, [camera]);
+
+    return null;
   }
 
   function WhackAMole3D() {
@@ -88,6 +114,7 @@ window.initGame = (React, assetsUrl) => {
     return React.createElement(
       React.Fragment,
       null,
+      React.createElement(Camera),
       React.createElement('ambientLight', { intensity: 0.5 }),
       React.createElement('pointLight', { position: [10, 10, 10] }),
       moles.map((isActive, index) => 
