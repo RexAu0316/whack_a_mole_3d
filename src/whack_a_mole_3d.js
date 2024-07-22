@@ -1,10 +1,12 @@
 window.initGame = (React, assetsUrl) => {
   const { useState, useEffect, useRef } = React;
-  const { useFrame, useThree } = window.ReactThreeFiber;
+  const { useFrame, useLoader, useThree } = window.ReactThreeFiber;
   const THREE = window.THREE;
+  const { GLTFLoader } = window.THREE;
 
   function Mole({ position, isActive, onWhack }) {
     const moleRef = useRef();
+    const { nodes, materials } = useLoader(GLTFLoader, `${assetsUrl}/mole.glb`);
 
     useEffect(() => {
       if (moleRef.current) {
@@ -13,20 +15,23 @@ window.initGame = (React, assetsUrl) => {
     }, [isActive]);
 
     return React.createElement(
-      'mesh',
+      'group',
       { 
         ref: moleRef,
         position: position,
         onClick: onWhack
       },
-      React.createElement('boxGeometry', { args: [1, 1, 1] }),
-      React.createElement('meshStandardMaterial', { color: isActive ? 'brown' : 'gray' })
+      React.createElement('primitive', {
+        object: nodes.Mole,
+        material: materials.MoleMaterial
+      })
     );
   }
 
   function Hammer() {
     const hammerRef = useRef();
     const { camera, mouse } = useThree();
+    const { nodes, materials } = useLoader(GLTFLoader, `${assetsUrl}/hammer.glb`);
 
     useFrame(() => {
       if (hammerRef.current) {
@@ -40,10 +45,12 @@ window.initGame = (React, assetsUrl) => {
     });
 
     return React.createElement(
-      'mesh',
+      'group',
       { ref: hammerRef },
-      React.createElement('boxGeometry', { args: [0.5, 0.5, 2] }),
-      React.createElement('meshStandardMaterial', { color: 'red' })
+      React.createElement('primitive', {
+        object: nodes.Hammer,
+        material: materials.HammerMaterial
+      })
     );
   }
 
