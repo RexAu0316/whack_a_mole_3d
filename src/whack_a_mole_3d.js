@@ -1,8 +1,11 @@
 window.initGame = (React, assetsUrl) => {
   const { useState, useEffect, useRef } = React;
-  const { useFrame, useLoader, useThree } = window.ReactThreeFiber;
+  const { useFrame, useLoader, useThree, extend } = window.ReactThreeFiber;
   const { GLTFLoader } = window.THREE;
   const { Text } = window.TroikaText;
+
+  // Extend Text component to make it compatible with React Three Fiber
+  extend({ Text });
 
   function Mole({ position, isActive, onWhack }) {
     const { nodes, materials } = useLoader(GLTFLoader, `${assetsUrl}/mole.glb`);
@@ -49,7 +52,7 @@ window.initGame = (React, assetsUrl) => {
   }
 
   function ScoreText({ score }) {
-    return React.createElement(Text, {
+    return React.createElement('text', {
       position: [-5, 4, -5],
       fontSize: 0.5,
       color: '#ffffff',
