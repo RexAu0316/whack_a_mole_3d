@@ -47,40 +47,6 @@ window.initGame = (React, assetsUrl) => {
     );
   }
 
-  function ScoreText({ score }) {
-    const { scene } = useThree();
-    const textRef = useRef();
-
-    useEffect(() => {
-      if (textRef.current) {
-        scene.remove(textRef.current);
-      }
-
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      canvas.width = 256;
-      canvas.height = 64;
-      context.fillStyle = 'white';
-      context.font = '32px Arial';
-      context.fillText(`Score: ${score}`, 10, 40);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      const material = new THREE.SpriteMaterial({ map: texture });
-      const sprite = new THREE.Sprite(material);
-      sprite.scale.set(5, 1.25, 1);
-      sprite.position.set(-5, 4, -5);
-
-      textRef.current = sprite;
-      scene.add(sprite);
-
-      return () => {
-        scene.remove(sprite);
-      };
-    }, [score, scene]);
-
-    return null;
-  }
-
   function WhackAMole3D() {
     const [moles, setMoles] = useState(Array(9).fill(false));
     const [score, setScore] = useState(0);
@@ -129,8 +95,7 @@ window.initGame = (React, assetsUrl) => {
           onWhack: () => whackMole(index)
         })
       ),
-      React.createElement(Hammer),
-      React.createElement(ScoreText, { score: score })
+      React.createElement(Hammer)
     );
   }
 
