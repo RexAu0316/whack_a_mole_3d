@@ -4,7 +4,41 @@ window.initGame = (React, assetsUrl) => {
   const THREE = window.THREE;
   const { GLTFLoader } = window.THREE;
 
-  // ... (MoleModel and Mole components remain unchanged)
+  const MoleModel = React.memo(function MoleModel({ url, scale = [1, 1, 1], position = [0, 0, 0] }) {
+    const gltf = useLoader(GLTFLoader, url);
+    const copiedScene = useMemo(() => gltf.scene.clone(), [gltf]);
+    
+    useEffect(() => {
+      copiedScene.scale.set(...scale);
+      copiedScene.position.set(...position);
+    }, [copiedScene, scale, position]);
+
+    return React.createElement('primitive', { object: copiedScene });
+  });
+
+  function Mole({ position, isActive, onWhack }) {
+    const moleRef = useRef();
+
+    useEffect(() => {
+      if (moleRef.current) {
+        moleRef.current.position.y = isActive ? 0 : -1;
+      }
+    }, [isActive]);
+
+    return React.createElement(
+      'group',
+      { 
+        ref: moleRef,
+        position: position,
+        onClick: onWhack
+      },
+      React.createElement(MoleModel, { 
+        url: `${assetsUrl}/mole.glb`,
+        scale: [3, 3, 3],
+        position: [0, -0.5, 0]
+      })
+    );
+  }
 
   const HammerModel = React.memo(function HammerModel({ url, scale = [1, 1, 1], position = [0, 0, 0], rotation = [0, 0, 0] }) {
     const gltf = useLoader(GLTFLoader, url);
@@ -64,10 +98,36 @@ window.initGame = (React, assetsUrl) => {
     );
   }
 
-  // ... (Camera component remains unchanged)
+  function Camera() {
+    const { camera } = useThree();
+    
+    useEffect(() => {
+      camera.position.set(0, 10, 15);
+      camera.lookAt(0, 0, 0);
+    }, [camera]);
+
+    return null;
+  }
 
   function WhackAMole3D() {
-    // ... (WhackAMole3D logic remains mostly unchanged)
+    const [moles, setMoles] = useState(Array(9).fill(false));
+    const [score, setScore] = useState(0);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        setMoles(prevMoles => {
+          const newMoles = [...prevMoles];
+          const inactiveIndices = newMoles.reduce((acc, mole, index) => mole ? acc : [...acc, index], []);
+          if (inactiveIndices.length > 0) {
+            const randomIndex = inactiveIndices[Math.floor(Math.random() * inactiveIndices.length)];
+            newMoles[randomIndex] = true;
+          }
+          return newMoles;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }, []);
 
     const whackMole = (index) => {
       if (moles[index]) {
@@ -106,3 +166,4 @@ window.initGame = (React, assetsUrl) => {
 };
 
 console.log('3D Whack-a-Mole game script loaded');
+
