@@ -1,14 +1,9 @@
 window.initGame = (React, assetsUrl) => {
   const { useState, useEffect, useRef } = React;
-  const { useFrame, useLoader, useThree, extend } = window.ReactThreeFiber;
-  const { GLTFLoader } = window.THREE;
-  const { Text } = window.TroikaText;
-
-  // Extend Text component to make it compatible with React Three Fiber
-  extend({ Text });
+  const { useFrame, useLoader, useThree } = window.ReactThreeFiber;
+  const THREE = window.THREE;
 
   function Mole({ position, isActive, onWhack }) {
-    const { nodes, materials } = useLoader(GLTFLoader, `${assetsUrl}/mole.glb`);
     const moleRef = useRef();
 
     useEffect(() => {
@@ -18,24 +13,24 @@ window.initGame = (React, assetsUrl) => {
     }, [isActive]);
 
     return React.createElement(
-      'group',
+      'mesh',
       { 
         ref: moleRef,
         position: position,
         onClick: onWhack
       },
-      React.createElement('primitive', { object: nodes.Mole, material: materials.MoleMaterial })
+      React.createElement('boxGeometry', { args: [1, 1, 1] }),
+      React.createElement('meshStandardMaterial', { color: isActive ? 'brown' : 'gray' })
     );
   }
 
   function Hammer() {
-    const { nodes, materials } = useLoader(GLTFLoader, `${assetsUrl}/hammer.glb`);
     const hammerRef = useRef();
     const { camera, mouse } = useThree();
 
     useFrame(() => {
       if (hammerRef.current) {
-        const vector = new window.THREE.Vector3(mouse.x, mouse.y, 0.5);
+        const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
         vector.unproject(camera);
         const dir = vector.sub(camera.position).normalize();
         const distance = -camera.position.z / dir.z;
@@ -45,21 +40,44 @@ window.initGame = (React, assetsUrl) => {
     });
 
     return React.createElement(
-      'group',
+      'mesh',
       { ref: hammerRef },
-      React.createElement('primitive', { object: nodes.Hammer, material: materials.HammerMaterial })
+      React.createElement('boxGeometry', { args: [0.5, 0.5, 2] }),
+      React.createElement('meshStandardMaterial', { color: 'red' })
     );
   }
 
   function ScoreText({ score }) {
-    return React.createElement('text', {
-      position: [-5, 4, -5],
-      fontSize: 0.5,
-      color: '#ffffff',
-      anchorX: 'left',
-      anchorY: 'top',
-      children: `Score: ${score}`
-    });
+    const { camera } = useThree();
+    const textRef = useRef();
+
+    useEffect(() => {
+      if (textRef.current) {
+        textRef.current.position.set(-5, 4, -5);
+        textRef.current.scale.set(0.5, 0.5, 0.5);
+        textRef.current.lookAt(camera.position);
+      }
+    }, [camera]);
+
+    return React.createElement(
+      'group',
+      { ref: textRef },
+      React.createElement(
+        'mesh',
+        null,
+        React.createElement('planeGeometry', { args: [10, 2] }),
+        React.createElement('meshBasicMaterial', { color: 'black', transparent: true, opacity: 0.5 })
+      ),
+      React.createElement(
+        'text',
+        {
+          color: 'white',
+          anchorX: 'center',
+          anchorY: 'middle'
+        },
+        `Score: ${score}`
+      )
+    );
   }
 
   function WhackAMole3D() {
