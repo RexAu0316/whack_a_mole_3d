@@ -2,6 +2,7 @@ window.initGame = (React, assetsUrl) => {
   const { useState, useEffect, useRef } = React;
   const { useFrame, useLoader, useThree } = window.ReactThreeFiber;
   const { GLTFLoader } = window.THREE;
+  const { Text } = window.TroikaText;
 
   function Mole({ position, isActive, onWhack }) {
     const { nodes, materials } = useLoader(GLTFLoader, `${assetsUrl}/mole.glb`);
@@ -31,7 +32,7 @@ window.initGame = (React, assetsUrl) => {
 
     useFrame(() => {
       if (hammerRef.current) {
-        const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+        const vector = new window.THREE.Vector3(mouse.x, mouse.y, 0.5);
         vector.unproject(camera);
         const dir = vector.sub(camera.position).normalize();
         const distance = -camera.position.z / dir.z;
@@ -45,6 +46,17 @@ window.initGame = (React, assetsUrl) => {
       { ref: hammerRef },
       React.createElement('primitive', { object: nodes.Hammer, material: materials.HammerMaterial })
     );
+  }
+
+  function ScoreText({ score }) {
+    return React.createElement(Text, {
+      position: [-5, 4, -5],
+      fontSize: 0.5,
+      color: '#ffffff',
+      anchorX: 'left',
+      anchorY: 'top',
+      children: `Score: ${score}`
+    });
   }
 
   function WhackAMole3D() {
@@ -96,15 +108,7 @@ window.initGame = (React, assetsUrl) => {
         })
       ),
       React.createElement(Hammer),
-      React.createElement('div', {
-        style: {
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          color: 'white',
-          fontSize: '24px'
-        }
-      }, `Score: ${score}`)
+      React.createElement(ScoreText, { score: score })
     );
   }
 
