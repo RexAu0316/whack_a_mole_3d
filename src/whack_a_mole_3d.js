@@ -34,7 +34,7 @@ window.initGame = (React, assetsUrl) => {
       },
       React.createElement(MoleModel, { 
         url: `${assetsUrl}/mole.glb`,
-        scale: [0.5, 0.5, 0.5],
+        scale: [5, 5, 5],
         position: [0, -0.5, 0]
       })
     );
@@ -72,7 +72,7 @@ window.initGame = (React, assetsUrl) => {
       { ref: hammerRef },
       React.createElement(HammerModel, { 
         url: `${assetsUrl}/hammer.glb`,
-        scale: [2, 2, 2],
+        scale: [10, 10, 10],
         position: [0, 0, -2]
       })
     );
