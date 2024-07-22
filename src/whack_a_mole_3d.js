@@ -1,6 +1,6 @@
 window.initGame = (React, assetsUrl) => {
   const { useState, useEffect, useRef } = React;
-  const { useFrame, useLoader, useThree } = window.ReactThreeFiber;
+  const { useFrame, useThree } = window.ReactThreeFiber;
   const THREE = window.THREE;
 
   function Mole({ position, isActive, onWhack }) {
@@ -48,36 +48,37 @@ window.initGame = (React, assetsUrl) => {
   }
 
   function ScoreText({ score }) {
-    const { camera } = useThree();
+    const { scene } = useThree();
     const textRef = useRef();
 
     useEffect(() => {
       if (textRef.current) {
-        textRef.current.position.set(-5, 4, -5);
-        textRef.current.scale.set(0.5, 0.5, 0.5);
-        textRef.current.lookAt(camera.position);
+        scene.remove(textRef.current);
       }
-    }, [camera]);
 
-    return React.createElement(
-      'group',
-      { ref: textRef },
-      React.createElement(
-        'mesh',
-        null,
-        React.createElement('planeGeometry', { args: [10, 2] }),
-        React.createElement('meshBasicMaterial', { color: 'black', transparent: true, opacity: 0.5 })
-      ),
-      React.createElement(
-        'text',
-        {
-          color: 'white',
-          anchorX: 'center',
-          anchorY: 'middle'
-        },
-        `Score: ${score}`
-      )
-    );
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = 256;
+      canvas.height = 64;
+      context.fillStyle = 'white';
+      context.font = '32px Arial';
+      context.fillText(`Score: ${score}`, 10, 40);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const material = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(5, 1.25, 1);
+      sprite.position.set(-5, 4, -5);
+
+      textRef.current = sprite;
+      scene.add(sprite);
+
+      return () => {
+        scene.remove(sprite);
+      };
+    }, [score, scene]);
+
+    return null;
   }
 
   function WhackAMole3D() {
