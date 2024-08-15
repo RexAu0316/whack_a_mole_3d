@@ -1,189 +1,126 @@
 window.initGame = (React, assetsUrl) => {
-  const { useState, useEffect, useRef, Suspense, useMemo } = React;
-  const { useFrame, useLoader, useThree } = window.ReactThreeFiber;
+  const { useEffect, useRef } = React;
+  const { useFrame, useThree } = window.ReactThreeFiber;
   const THREE = window.THREE;
-  const { GLTFLoader } = window.THREE;
 
-  const MoleModel = React.memo(function MoleModel({ url, scale = [1, 1, 1], position = [0, 0, 0] }) {
-    const gltf = useLoader(GLTFLoader, url);
-    const copiedScene = useMemo(() => gltf.scene.clone(), [gltf]);
-    
+  function Player({ wallBoxes }) {
+    const playerRef = useRef();
+    const speed = 0.1;
+    const keys = useRef({});
+
     useEffect(() => {
-      copiedScene.scale.set(...scale);
-      copiedScene.position.set(...position);
-    }, [copiedScene, scale, position]);
+      const handleKeyDown = (event) => {
+        keys.current[event.key] = true;
+      };
 
-    return React.createElement('primitive', { object: copiedScene });
-  });
+      const handleKeyUp = (event) => {
+        keys.current[event.key] = false;
+      };
 
-  function Mole({ position, isActive, onWhack }) {
-    const moleRef = useRef();
-    const [moleY, setMoleY] = useState(-1);
+      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keyup', handleKeyUp);
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keyup', handleKeyUp);
+      };
+    }, []);
 
-    useFrame((state, delta) => {
-      if (moleRef.current) {
-        const targetY = isActive ? 0 : -1;
-        setMoleY(current => THREE.MathUtils.lerp(current, targetY, delta * 5));
-        moleRef.current.position.y = moleY;
-      }
-    });
+    const checkCollision = (nextPosition) => {
+      const playerBox = new THREE.Box3().setFromCenterAndSize(
+        new THREE.Vector3(...nextPosition),
+        new THREE.Vector3(0.5, 1, 0.5)
+      );
 
-    return React.createElement(
-      'group',
-      { 
-        ref: moleRef,
-        position: position,
-        onClick: onWhack
-      },
-      React.createElement(MoleModel, { 
-        url: `${assetsUrl}/mole.glb`,
-        scale: [3, 3, 3],
-        position: [0, -0.5, 0]
-      })
-    );
-  }
+      return wallBoxes.some(wallBox => playerBox.intersectsBox(wallBox));
+    };
 
-  const HammerModel = React.memo(function HammerModel({ url, scale = [1, 1, 1], position = [0, 0, 0], rotation = [0, 0, 0] }) {
-    const gltf = useLoader(GLTFLoader, url);
-    const copiedScene = useMemo(() => gltf.scene.clone(), [gltf]);
-    
-    useEffect(() => {
-      copiedScene.scale.set(...scale);
-      copiedScene.position.set(...position);
-      copiedScene.rotation.set(...rotation);
-    }, [copiedScene, scale, position, rotation]);
+    useFrame(() => {
+      if (playerRef.current) {
+        const direction = new THREE.Vector3();
+        if (keys.current['ArrowUp']) direction.z -= speed;
+        if (keys.current['ArrowDown']) direction.z += speed;
+        if (keys.current['ArrowLeft']) direction.x -= speed;
+        if (keys.current['ArrowRight']) direction.x += speed;
 
-    return React.createElement('primitive', { object: copiedScene });
-  });
+        const nextPosition = [
+          playerRef.current.position.x + direction.x,
+          playerRef.current.position.y,
+          playerRef.current.position.z + direction.z,
+        ];
 
-  function Hammer() {
-    const hammerRef = useRef();
-    const { camera, mouse } = useThree();
-    const [isHitting, setIsHitting] = useState(false);
-    const hitStartTime = useRef(0);
-
-    useFrame((state, delta) => {
-      if (hammerRef.current) {
-        const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
-        vector.unproject(camera);
-        const dir = vector.sub(camera.position).normalize();
-        const distance = -camera.position.z / dir.z;
-        const pos = camera.position.clone().add(dir.multiplyScalar(distance));
-        hammerRef.current.position.copy(pos);
-
-        // Hitting animation
-        if (isHitting) {
-          const elapsedTime = state.clock.getElapsedTime() - hitStartTime.current;
-          if (elapsedTime < 0.2) {
-            hammerRef.current.rotation.x = Math.PI / 2 * Math.sin(elapsedTime * Math.PI / 0.2);
-          } else {
-            setIsHitting(false);
-            hammerRef.current.rotation.x = 0;
-          }
+        if (!checkCollision(nextPosition)) {
+          playerRef.current.position.set(nextPosition[0], nextPosition[1], nextPosition[2]);
         }
       }
     });
 
-    const handleClick = () => {
-      setIsHitting(true);
-      hitStartTime.current = THREE.MathUtils.clamp(THREE.MathUtils.randFloat(0, 1), 0, 1);
-    };
-
-    return React.createElement(
-      'group',
-      { ref: hammerRef, onClick: handleClick },
-      React.createElement(HammerModel, { 
-        url: `${assetsUrl}/hammer.glb`,
-        scale: [20, 20, 20],
-        position: [0, 0, -2],
-        rotation: [-Math.PI / 2, 0, 0]
-      })
-    );
+    return React.createElement('mesh', {
+      ref: playerRef,
+      position: [8.5, 0.5, -8.5],
+      geometry: new THREE.BoxGeometry(0.5, 1, 0.5),
+      material: new THREE.MeshStandardMaterial({ color: 'blue' })
+    });
   }
 
   function Camera() {
     const { camera } = useThree();
-    
     useEffect(() => {
-      camera.position.set(0, 10, 15);
+      camera.position.set(0, 20, 20);
       camera.lookAt(0, 0, 0);
     }, [camera]);
-
     return null;
   }
 
-  function WhackAMole3D() {
-    const [moles, setMoles] = useState(Array(9).fill(false));
-    const [score, setScore] = useState(0);
+  function Maze() {
+    const wallHeight = 1; // Height of the walls
+    const mazeLayout = [
+      // ... (your original maze layout)
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      [1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1],
+      [1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1],
+      [1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
+      [1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+      [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1],
+      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1],
+      [1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1],
+      [1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1],
+      [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
+      [1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
+      [1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1],
+      [1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1],
+      [1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+      [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ];
 
-    useEffect(() => {
-      const popUpMole = () => {
-        setMoles(prevMoles => {
-          const newMoles = [...prevMoles];
-          const inactiveIndices = newMoles.reduce((acc, mole, index) => !mole ? [...acc, index] : acc, []);
-          if (inactiveIndices.length > 0) {
-            const randomIndex = inactiveIndices[Math.floor(Math.random() * inactiveIndices.length)];
-            newMoles[randomIndex] = true;
-          }
-          return newMoles;
-        });
-      };
+    const wallPositions = [];
 
-      const popDownMole = () => {
-        setMoles(prevMoles => {
-          const newMoles = [...prevMoles];
-          const activeIndices = newMoles.reduce((acc, mole, index) => mole ? [...acc, index] : acc, []);
-          if (activeIndices.length > 0) {
-            const randomIndex = activeIndices[Math.floor(Math.random() * activeIndices.length)];
-            newMoles[randomIndex] = false;
-          }
-          return newMoles;
-        });
-      };
+    const wallBoxes = []; // Create your wall boxes here.
 
-      const popUpInterval = setInterval(popUpMole, 1000);
-      const popDownInterval = setInterval(popDownMole, 2000);
+    return React.createElement(
+      React.Fragment,
+      null,
+      // Create MazeWall components here...
+      React.createElement(Player, { wallBoxes }), // Pass wallBoxes to Player
+    );
+  }
 
-      return () => {
-        clearInterval(popUpInterval);
-        clearInterval(popDownInterval);
-      };
-    }, []);
-
-    const whackMole = (index) => {
-      if (moles[index]) {
-        setScore(prevScore => prevScore + 1);
-        setMoles(prevMoles => {
-          const newMoles = [...prevMoles];
-          newMoles[index] = false;
-          return newMoles;
-        });
-      }
-    };
-
+  function MazeRunnerGame() {
     return React.createElement(
       React.Fragment,
       null,
       React.createElement(Camera),
       React.createElement('ambientLight', { intensity: 0.5 }),
       React.createElement('pointLight', { position: [10, 10, 10] }),
-      moles.map((isActive, index) => 
-        React.createElement(Mole, {
-          key: index,
-          position: [
-            (index % 3 - 1) * 4,
-            0,
-            (Math.floor(index / 3) - 1) * 4
-          ],
-          isActive: isActive,
-          onWhack: () => whackMole(index)
-        })
-      ),
-      React.createElement(Hammer)
+      React.createElement(Maze)
     );
   }
 
-  return WhackAMole3D;
+  return MazeRunnerGame;
 };
 
-console.log('3D Whack-a-Mole game script loaded');
+console.log('3D Maze Runner game script loaded');
